@@ -38,17 +38,19 @@ private:
 
 public:
     esp_err_t init(gpio_num_t tx, gpio_num_t rx, uart_port_t _port = UART_NUM_1, size_t rx_buf_size = 512);
-    esp_err_t get_reading(uint16_t *co2_out);
-    esp_err_t get_reading(uint16_t *co2_out, uint16_t *temp_out);
-    esp_err_t set_auto_calib(bool enable);
-    esp_err_t calib_zero_point();
-    esp_err_t calib_span_point();
-    esp_err_t set_range(uint16_t range);
+    esp_err_t get_reading(uint16_t *co2_out, uint32_t timeout_ticks);
+    esp_err_t calib_zero_point(uint32_t timeout_ticks);
+    esp_err_t calib_span_point(uint32_t timeout_ticks);
 
 private:
-    static void uart_event_task(void *ctx);
+    static uint8_t calc_checksum(const uint8_t *packet);
 
 private:
     QueueHandle_t uart_evt_queue = nullptr;
     uart_port_t port = UART_NUM_1;
+
+    static const constexpr char TAG[] = "mhz19e";
+    static const constexpr uint8_t CMD_READ_GAS_CONCENTRATION[] = { 0xff, 0x01, 0x86, 0, 0, 0, 0, 0, 0x79 };
+    static const constexpr uint8_t CMD_CALIB_ZERO_POINT[] = { 0xff, 0x01, 0x87, 0, 0, 0, 0, 0, 0x78 };
+    static const constexpr uint8_t CMD_CALIB_SPAN_POINT[] = { 0xff, 0x01, 0x88, 0x07, 0xd0, 0, 0, 0, 0xa0 };
 };

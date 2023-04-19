@@ -1,32 +1,65 @@
+#include <esp_log.h>
+
 #include "mhz19e.hpp"
 
-esp_err_t mhz19e::get_reading(uint16_t *co2_out)
+esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint32_t timeout_ticks)
 {
+    if (co2_out == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    auto ret = uart_flush(port);
+
+    ret = ret ?: uart_write_bytes(port, CMD_READ_GAS_CONCENTRATION, sizeof(CMD_READ_GAS_CONCENTRATION));
+    ret = ret ?: uart_wait_tx_done(port, timeout_ticks);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Get reading: send fail");
+        return ret;
+    }
+
+    uint8_t rx_buf[9] = { 0 };
+    auto read_len = uart_read_bytes(port, rx_buf, sizeof(rx_buf), timeout_ticks);
+    ESP_LOG_BUFFER_HEX(TAG, rx_buf, sizeof(rx_buf));
+    if (read_len < 9) {
+        ESP_LOGE(TAG, "Get reading: insufficient data");
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    uint8_t checksum = calc_checksum(rx_buf);
+    if (rx_buf[8] != checksum) {
+        ESP_LOGE(TAG, "Get reading: invalid checksum: 0x%02x vs 0x%02x", rx_buf[8], checksum);
+        return ESP_ERR_INVALID_CRC;
+    }
+
+    *co2_out = rx_buf[2] * 256 + rx_buf[3];
     return ESP_OK;
 }
 
-esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint16_t *temp_out)
+esp_err_t mhz19e::calib_zero_point(uint32_t timeout_ticks)
 {
+    auto ret = uart_flush(port);
+
+    ret = ret ?: uart_write_bytes(port, CMD_CALIB_ZERO_POINT, sizeof(CMD_CALIB_ZERO_POINT));
+    ret = ret ?: uart_wait_tx_done(port, timeout_ticks);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Calib zero point: send fail");
+        return ret;
+    }
+
     return ESP_OK;
 }
 
-esp_err_t mhz19e::set_auto_calib(bool enable)
+esp_err_t mhz19e::calib_span_point(uint32_t timeout_ticks)
 {
-    return ESP_OK;
-}
+    auto ret = uart_flush(port);
 
-esp_err_t mhz19e::calib_zero_point()
-{
-    return ESP_OK;
-}
+    ret = ret ?: uart_write_bytes(port, CMD_CALIB_SPAN_POINT, sizeof(CMD_CALIB_SPAN_POINT));
+    ret = ret ?: uart_wait_tx_done(port, timeout_ticks);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Calib span point: send fail");
+        return ret;
+    }
 
-esp_err_t mhz19e::calib_span_point()
-{
-    return ESP_OK;
-}
-
-esp_err_t mhz19e::set_range(uint16_t range)
-{
     return ESP_OK;
 }
 
@@ -41,24 +74,25 @@ esp_err_t mhz19e::init(gpio_num_t tx, gpio_num_t rx, uart_port_t _port, size_t r
     uart_config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
     uart_config.source_clk = UART_SCLK_APB;
 
-    auto ret = uart_driver_install(port, (int)rx_buf_size, 0, 20, &uart_evt_queue, 0);
+    auto ret = uart_driver_install(port, (int)rx_buf_size, 0, 0, nullptr, 0);
     ret = ret ?: uart_param_config(port, &uart_config);
     ret = ret ?: uart_set_pin(port, tx, rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    ret = ret ?: uart_enable_pattern_det_baud_intr(port, (char)0xff, 1, 9, 0, 0);
-    ret = ret ?: uart_pattern_queue_reset(port, 20);
-
-    if (ret != ESP_OK) {
-        return ret;
-    } else {
-        if (xTaskCreate(uart_event_task, "mhz19e_uart", 8192, this, tskIDLE_PRIORITY + 3, nullptr) != pdPASS) {
-            return ESP_ERR_NO_MEM;
-        }
-    }
 
     return ret;
 }
 
-void mhz19e::uart_event_task(void *ctx)
+uint8_t mhz19e::calc_checksum(const uint8_t *packet)
 {
+    if (packet == nullptr) {
+        return 0;
+    }
 
+    uint8_t checksum = 0;
+    for (size_t idx = 1; idx < 8; idx += 1) {
+        checksum += packet[idx];
+    }
+
+    checksum = 0xff - checksum;
+    checksum += 1;
+    return checksum;
 }
