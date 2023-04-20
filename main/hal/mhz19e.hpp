@@ -43,7 +43,7 @@ public:
     [[nodiscard]] esp_err_t calib_span_point(uint32_t timeout_ticks) const;
 
 private:
-    static uint8_t calc_checksum(const uint8_t *packet);
+    static uint8_t calc_checksum(const uint8_t *packet, size_t len);
 
 private:
     QueueHandle_t uart_evt_queue = nullptr;
