@@ -2,7 +2,7 @@
 
 #include "mhz19e.hpp"
 
-esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint32_t timeout_ticks)
+esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint32_t timeout_ticks) const
 {
     if (co2_out == nullptr) {
         return ESP_ERR_INVALID_ARG;
@@ -35,7 +35,7 @@ esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint32_t timeout_ticks)
     return ESP_OK;
 }
 
-esp_err_t mhz19e::calib_zero_point(uint32_t timeout_ticks)
+esp_err_t mhz19e::calib_zero_point(uint32_t timeout_ticks) const
 {
     auto ret = uart_flush(port);
 
@@ -49,7 +49,7 @@ esp_err_t mhz19e::calib_zero_point(uint32_t timeout_ticks)
     return ESP_OK;
 }
 
-esp_err_t mhz19e::calib_span_point(uint32_t timeout_ticks)
+esp_err_t mhz19e::calib_span_point(uint32_t timeout_ticks) const
 {
     auto ret = uart_flush(port);
 

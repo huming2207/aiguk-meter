@@ -38,9 +38,9 @@ private:
 
 public:
     esp_err_t init(gpio_num_t tx, gpio_num_t rx, uart_port_t _port = UART_NUM_1, size_t rx_buf_size = 512);
-    esp_err_t get_reading(uint16_t *co2_out, uint32_t timeout_ticks);
-    esp_err_t calib_zero_point(uint32_t timeout_ticks);
-    esp_err_t calib_span_point(uint32_t timeout_ticks);
+    esp_err_t get_reading(uint16_t *co2_out, uint32_t timeout_ticks) const;
+    [[nodiscard]] esp_err_t calib_zero_point(uint32_t timeout_ticks) const;
+    [[nodiscard]] esp_err_t calib_span_point(uint32_t timeout_ticks) const;
 
 private:
     static uint8_t calc_checksum(const uint8_t *packet);
