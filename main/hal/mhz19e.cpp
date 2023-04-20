@@ -24,7 +24,7 @@ esp_err_t mhz19e::get_reading(uint16_t *co2_out, uint32_t timeout_ticks) const
 
     uint8_t rx_buf[9] = { 0 };
     auto read_len = uart_read_bytes(port, rx_buf, sizeof(rx_buf), timeout_ticks);
-    ESP_LOG_BUFFER_HEX(TAG, rx_buf, sizeof(rx_buf));
+    ESP_LOG_BUFFER_HEX_LEVEL(TAG, rx_buf, sizeof(rx_buf), ESP_LOG_VERBOSE);
     if (read_len < 9) {
         ESP_LOGE(TAG, "Get reading: insufficient data, got %u", read_len);
         return ESP_ERR_INVALID_SIZE;
