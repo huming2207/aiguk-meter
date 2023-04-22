@@ -2,6 +2,7 @@
 #include <freertos/task.h>
 #include <esp_rom_sys.h>
 #include <esp_log.h>
+#include <cstring>
 
 #include "bme680.hpp"
 #include "bme68x/bme68x.h"
@@ -55,8 +56,78 @@ esp_err_t bme680::init(gpio_num_t scl, gpio_num_t sda, i2c_port_t _port)
     auto bme_ret = bme68x_init(&bme_dev);
     if (bme_ret < 0) {
         ESP_LOGE(TAG, "BME Init failed: %d", bme_ret);
-        return ESP_FAIL;
+        return bme_ret;
     }
 
     return ret;
+}
+
+esp_err_t bme680::set_config(bme680_def::mode mode, bme68x_conf *_config, bme68x_heatr_conf *_heater_config)
+{
+    if (_config == nullptr || _heater_config == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    auto ret = bme68x_set_conf(_config, &bme_dev);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "BME set config failed: %d", ret);
+        return ret;
+    }
+
+    ret = bme68x_set_heatr_conf(mode, _heater_config, &bme_dev);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "BME set heater config failed: %d", ret);
+        return ret;
+    }
+
+    memcpy(&bme_config, _config, sizeof(bme_config));
+    memcpy(&heater_config, _heater_config, sizeof(heater_config));
+    return ESP_OK;
+}
+
+esp_err_t bme680::set_operation_mode(bme680_def::mode mode)
+{
+    auto ret = bme68x_set_op_mode(mode, &bme_dev);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "BME set op mode failed: %d", ret);
+        return ret;
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t bme680::get_reading_forced(bme68x_data *out)
+{
+    if (out == nullptr) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    auto ret = bme68x_set_op_mode(BME68X_FORCED_MODE, &bme_dev);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "BME set op mode failed: %d", ret);
+        return ret;
+    }
+
+    uint32_t delay_us = bme68x_get_meas_dur(BME68X_FORCED_MODE, &bme_config, &bme_dev);
+    delay_us += (heater_config.heatr_dur * 1000);
+
+    if (delay_us % 1000 != 0) {
+        delay_us += 1000;
+    }
+
+    uint32_t delay_ticks = pdMS_TO_TICKS(delay_us / 1000) + 1;
+    vTaskDelay(delay_ticks);
+
+    uint8_t reading_cnt = 0;
+    ret = bme68x_get_data(BME68X_FORCED_MODE, out, &reading_cnt, &bme_dev);
+    if (ret < 0) {
+        ESP_LOGE(TAG, "BME get data failed: %d", ret);
+        return ret;
+    }
+
+    if (reading_cnt < 1) {
+        ESP_LOGW(TAG, "No reading??");
+    }
+
+    return ESP_OK;
 }
