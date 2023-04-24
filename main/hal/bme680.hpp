@@ -66,6 +66,7 @@ public:
     esp_err_t set_config(bme680_def::mode mode, bme68x_conf *config, bme68x_heatr_conf *heater_config);
     esp_err_t set_operation_mode(bme680_def::mode mode);
     esp_err_t get_reading_forced(bme68x_data *out);
+    esp_err_t soft_reset();
 
 private:
     static BME68X_INTF_RET_TYPE i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr);

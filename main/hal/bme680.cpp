@@ -203,3 +203,8 @@ esp_err_t bme680::get_reading_forced(bme68x_data *out)
 
     return ESP_OK;
 }
+
+esp_err_t bme680::soft_reset()
+{
+    return bme68x_soft_reset(&bme_dev);
+}
