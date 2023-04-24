@@ -62,10 +62,11 @@ private:
     bme680() = default;
 
 public:
-    esp_err_t init(gpio_num_t scl, gpio_num_t sda, i2c_port_t _port = I2C_NUM_0);
+    esp_err_t init(gpio_num_t scl, gpio_num_t sda, uint8_t _addr = 0x76, i2c_port_t _port = I2C_NUM_0);
     esp_err_t set_config(bme680_def::mode mode, bme68x_conf *config, bme68x_heatr_conf *heater_config);
     esp_err_t set_operation_mode(bme680_def::mode mode);
     esp_err_t get_reading_forced(bme68x_data *out);
+    static uint32_t get_air_quality(float gas_resistance);
 
 private:
     static BME68X_INTF_RET_TYPE i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr);
@@ -73,6 +74,7 @@ private:
     static void sensor_delay_us(uint32_t period, void *intf_ptr);
 
 private:
+    uint8_t bme_addr = 0x76;
     i2c_port_t port = I2C_NUM_0;
     bme68x_dev bme_dev = {};
     bme68x_conf bme_config = {};

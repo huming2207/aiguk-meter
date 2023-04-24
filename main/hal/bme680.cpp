@@ -1,24 +1,95 @@
+#include <cstring>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_rom_sys.h>
 #include <esp_log.h>
-#include <cstring>
+
+#include <driver/i2c.h>
 
 #include "bme680.hpp"
 #include "bme68x/bme68x.h"
 
+#define I2C_WRITE_BIT 0
+#define I2C_READ_BIT 1
+
 BME68X_INTF_RET_TYPE bme680::i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-    return 0;
+    if (intf_ptr == nullptr) {
+        return BME68X_E_NULL_PTR;
+    }
+
+    auto *ctx = static_cast<bme680 *>(intf_ptr);
+
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+    auto ret = i2c_master_start(cmd);
+    ret = ret ?: i2c_master_write_byte(cmd, (ctx->bme_addr << 1) | I2C_WRITE_BIT, true);
+    ret = ret ?: i2c_master_write_byte(cmd, reg_addr, true);
+
+    if (reg_data != nullptr && length > 0) {
+        ret = ret ?: i2c_master_start(cmd);
+        ret = ret ?: i2c_master_write_byte(cmd, (ctx->bme_addr << 1) | I2C_READ_BIT, true);
+        ret = ret ?: i2c_master_read(cmd, reg_data, length, I2C_MASTER_LAST_NACK);
+    }
+
+    ret = ret ?: i2c_master_stop(cmd);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Read comm setup failed");
+        return BME68X_E_COM_FAIL;
+    }
+
+    ret = ret ?: i2c_master_cmd_begin(ctx->port, cmd, pdMS_TO_TICKS(1000));
+    i2c_cmd_link_delete(cmd);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Read failed");
+        return BME68X_E_COM_FAIL;
+    } else {
+        return BME68X_OK;
+    }
 }
 
 BME68X_INTF_RET_TYPE bme680::i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t length, void *intf_ptr)
 {
-    return 0;
+    if (intf_ptr == nullptr) {
+        return BME68X_E_NULL_PTR;
+    }
+
+    auto *ctx = static_cast<bme680 *>(intf_ptr);
+
+    i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+
+    auto ret = i2c_master_start(cmd);
+    ret = ret ?: i2c_master_write_byte(cmd, (ctx->bme_addr << 1) | I2C_WRITE_BIT, true);
+    ret = ret ?: i2c_master_write_byte(cmd, reg_addr, true);
+
+    if (reg_data != nullptr && length > 0) {
+        ret = ret ?: i2c_master_write(cmd, reg_data, length, true);
+    }
+
+    ret = ret ?: i2c_master_stop(cmd);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Write comm setup failed");
+        return BME68X_E_COM_FAIL;
+    }
+
+    ret = ret ?: i2c_master_cmd_begin(ctx->port, cmd, pdMS_TO_TICKS(1000));
+    i2c_cmd_link_delete(cmd);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Write comm failed");
+        return BME68X_E_COM_FAIL;
+    } else {
+        return BME68X_OK;
+    }
 }
 
 void bme680::sensor_delay_us(uint32_t period, void *intf_ptr)
 {
+    (void)intf_ptr;
+
     if (period > 1000) {
         vTaskDelay(pdMS_TO_TICKS(period / 1000));
     } else {
@@ -26,9 +97,10 @@ void bme680::sensor_delay_us(uint32_t period, void *intf_ptr)
     }
 }
 
-esp_err_t bme680::init(gpio_num_t scl, gpio_num_t sda, i2c_port_t _port)
+esp_err_t bme680::init(gpio_num_t scl, gpio_num_t sda, uint8_t _addr, i2c_port_t _port)
 {
     port = _port;
+    bme_addr = _addr;
 
     i2c_config_t i2c_cfg = {};
     i2c_cfg.mode = I2C_MODE_MASTER;
