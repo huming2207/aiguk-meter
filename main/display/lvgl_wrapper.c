@@ -54,7 +54,11 @@ esp_err_t lvgl_disp_init()
     lv_init();
 
     ESP_LOGI(TAG, "Display hardware init");
-    lv_st7789_init();
+    esp_err_t ret = lv_st7789_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Hardware init failed");
+        return ret;
+    }
 
     buf_a = heap_caps_malloc(SI_DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
     if (buf_a == NULL) {
@@ -85,7 +89,7 @@ esp_err_t lvgl_disp_init()
             .callback = lv_tick_cb,
     };
 
-    esp_err_t ret = esp_timer_create(&timer_args, &timer_handle);
+    ret = esp_timer_create(&timer_args, &timer_handle);
     ret = ret ?: esp_timer_start_periodic(timer_handle, LV_TICK_PERIOD_MS * 1000);
 
     if (ret != ESP_OK) {
