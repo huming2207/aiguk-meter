@@ -203,9 +203,9 @@ esp_err_t lv_st7789_init()
     ret = ret ?: gpio_set_pull_mode(CONFIG_LCD_IO_RST, GPIO_PULLUP_ONLY);
     ESP_LOGI(LOG_TAG, "Reset display");
 
-    ESP_ERROR_CHECK(gpio_set_level(CONFIG_LCD_IO_RST, 0));
+    ret = ret ?: gpio_set_level(CONFIG_LCD_IO_RST, 0);
     vTaskDelay(pdMS_TO_TICKS(100));
-    ESP_ERROR_CHECK(gpio_set_level(CONFIG_LCD_IO_RST, 1));
+    ret = ret ?: gpio_set_level(CONFIG_LCD_IO_RST, 1);
     vTaskDelay(pdMS_TO_TICKS(100));
 
     spi_bus_config_t bus_config = {
