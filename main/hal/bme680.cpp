@@ -111,7 +111,10 @@ esp_err_t bme680::init(gpio_num_t scl, gpio_num_t sda, uint8_t _addr, i2c_port_t
     i2c_cfg.sda_pullup_en = true;
     i2c_cfg.master.clk_speed = 100000;
 
-    auto ret = i2c_param_config(port, &i2c_cfg);
+    auto ret = gpio_reset_pin(scl);
+    ret = ret ?: gpio_reset_pin(sda);
+
+    ret = ret ?: i2c_param_config(port, &i2c_cfg);
     ret = ret ?: i2c_driver_install(port, I2C_MODE_MASTER, 0, 0, 0);
     if (ret != ESP_OK) {
         ESP_LOGI(TAG, "I2C init failed: 0x%x", ret);
