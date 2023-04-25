@@ -6,6 +6,7 @@ idf_component_register(
             "hal/bme680.cpp" "hal/bme680.hpp"
             "hal/lhs154kc.c" "hal/lhs154kc.h"
             "display/lvgl_wrapper.c" "display/lvgl_wrapper.h"
+            "display/weather_ui.cpp" "display/weather_ui.hpp"
 
         INCLUDE_DIRS
             "." "hal"
