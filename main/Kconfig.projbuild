@@ -1,4 +1,4 @@
-menu "Soul Injector Configuration"
+menu "Project AiGuk Configuration"
 
     config SI_DEVICE_MODEL
         string "Device model"

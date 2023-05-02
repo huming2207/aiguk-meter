@@ -5,6 +5,20 @@
 esp_err_t weather_ui::init()
 {
     auto ret = lvgl_disp_init();
+    ret = ret ?: bme_sensor->init(GPIO_NUM_11, GPIO_NUM_12);
+    bme68x_conf config = {};
+    config.filter = BME68X_FILTER_OFF;
+    config.odr = BME68X_ODR_NONE;
+    config.os_hum = BME68X_OS_16X;
+    config.os_pres = BME68X_OS_8X;
+    config.os_temp = BME68X_OS_8X;
+
+    bme68x_heatr_conf heater_config = {};
+    heater_config.enable = BME68X_DISABLE;
+    heater_config.heatr_temp = 300;
+    heater_config.heatr_dur = 100;
+
+    ret = ret ?: bme_sensor->set_config(bme680_def::FORCED, &config, &heater_config);
 
     if (ret == ESP_OK) {
         curr_state = ui_def::STATE_INIT;
@@ -44,13 +58,20 @@ esp_err_t weather_ui::display_splash()
     lv_obj_set_style_text_color(bottom_text, lv_color_black(), 0);
 
     lvgl_give_lock();
+    curr_state = ui_def::STATE_SPLASH;
     return ESP_OK;
 }
 
 esp_err_t weather_ui::display_main()
 {
     ESP_LOGI(TAG, "Load main view");
-    esp_err_t ret = ESP_OK;
+    esp_err_t ret = read_sensor();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Sensor error: %d", ret);
+    } else {
+        ESP_LOGI(TAG, "Got reading: %.2f degC; %.2f pa, %.2f %%; AQI %.2f", bme_data.temperature, bme_data.pressure, bme_data.humidity, bme_data.gas_resistance);
+    }
+
     if (curr_state != ui_def::STATE_MAIN) {
         ESP_LOGI(TAG, "Create main view");
         ret = clear_display();
@@ -114,18 +135,26 @@ esp_err_t weather_ui::display_main()
         ret = lvgl_take_lock(pdMS_TO_TICKS(1000));
     }
 
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
     lv_label_set_text(top_title, "Temperature (degC)");
     lv_label_set_text(mid_title, "Humidity (RH%)");
     lv_label_set_text(bottom_title, "Air Pressure (pa)");
 
-    lv_label_set_text(top_content, "1235.678");
-    lv_label_set_text(mid_content, "1235.678");
-    lv_label_set_text(bottom_content, "1235.678");
+    char content[16] = { 0 };
+    snprintf(content, sizeof(content) - 1, "%.2f", bme_data.temperature - 5.6f);
+    lv_label_set_text(top_content, content);
+    memset(content, 0, sizeof(content));
+    snprintf(content, sizeof(content) - 1, "%.2f", bme_data.humidity);
+    lv_label_set_text(mid_content, content);
+    memset(content, 0, sizeof(content));
+    snprintf(content, sizeof(content) - 1, "%.2f", bme_data.pressure);
+    lv_label_set_text(bottom_content, content);
 
     lvgl_give_lock();
-
-    return 0;
+    return ESP_OK;
 }
 
 esp_err_t weather_ui::clear_display()
@@ -157,12 +186,7 @@ esp_err_t weather_ui::clear_display()
 
 esp_err_t weather_ui::read_sensor()
 {
-    return 0;
-}
-
-esp_err_t weather_ui::process_state()
-{
-    return 0;
+    return bme_sensor->get_reading_forced(&bme_data);
 }
 
 esp_err_t weather_ui::draw_two_bars(lv_obj_t **top_out, lv_obj_t **bottom_out, lv_color_t top_color, lv_color_t bottom_color)

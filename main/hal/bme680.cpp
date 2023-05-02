@@ -104,12 +104,12 @@ esp_err_t bme680::init(gpio_num_t scl, gpio_num_t sda, uint8_t _addr, i2c_port_t
 
     i2c_config_t i2c_cfg = {};
     i2c_cfg.mode = I2C_MODE_MASTER;
-    i2c_cfg.clk_flags = 0;
+    i2c_cfg.clk_flags = I2C_SCLK_SRC_FLAG_AWARE_DFS | I2C_SCLK_SRC_FLAG_LIGHT_SLEEP;
     i2c_cfg.scl_io_num = scl;
     i2c_cfg.scl_pullup_en = true;
     i2c_cfg.sda_io_num = sda;
     i2c_cfg.sda_pullup_en = true;
-    i2c_cfg.master.clk_speed = 100000;
+    i2c_cfg.master.clk_speed = 400000;
 
     auto ret = gpio_reset_pin(scl);
     ret = ret ?: gpio_reset_pin(sda);

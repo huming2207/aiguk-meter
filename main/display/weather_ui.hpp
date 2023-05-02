@@ -4,6 +4,7 @@
 
 #include <esp_err.h>
 #include <lvgl.h>
+#include "bme680.hpp"
 
 namespace ui_def
 {
@@ -32,13 +33,12 @@ private:
 
 public:
     esp_err_t init();
-
-private:
     esp_err_t display_splash();
     esp_err_t display_main();
+
+private:
     esp_err_t clear_display();
     esp_err_t read_sensor();
-    esp_err_t process_state();
 
 private:
     esp_err_t draw_two_bars(lv_obj_t **top_out, lv_obj_t **bottom_out, lv_color_t top_color, lv_color_t bottom_color);
@@ -46,6 +46,7 @@ private:
 
 private:
     static const constexpr char TAG[] = "weather_ui";
+    bme680 *bme_sensor = bme680::instance();
     ui_def::state curr_state = ui_def::STATE_SPLASH;
     lv_obj_t *root_obj = nullptr;
     lv_obj_t *top_bar = nullptr;
@@ -57,4 +58,6 @@ private:
     lv_obj_t *top_content = nullptr;
     lv_obj_t *mid_content = nullptr;
     lv_obj_t *bottom_content = nullptr;
+
+    bme68x_data bme_data = {};
 };
